@@ -15,9 +15,8 @@
 #define AUDIO_SDB PIN_PB23
 
 static volatile  uint8_t waveform_type = sine;
-static volatile uint16_t count_timer = 0;
-static volatile uint16_t waveform_volume = 25; //0x3ff highest analog value to be generated
-volatile static uint16_t waveform_frequency = 440;  //1KHz
+static volatile uint16_t waveform_volume = 0; //0x3ff highest analog value to be generated
+volatile static uint16_t waveform_frequency = 5000;  //1KHz
 
 
 void configure_dac(void)
@@ -170,7 +169,6 @@ static uint16_t* calculate_wave()
 			 waveform_ramp++;
 		}
 		waveform_ramp = waveform_current;
-		
 	}
 	else if(waveform_type == triangular)
 	{
@@ -277,11 +275,12 @@ void speaker_update()
 		I_1 = calculate_frequency() ;
 		setup_transfer_descriptor_dac(&descriptor_DAC);
 		setup_prescalar(I_1);
-		//dma_start_transfer_job(&resource_DAC);
+		dma_start_transfer_job(&resource_DAC);
+		enable_speaker();
 		if(speaker_enable == false)
 		{
 			//tc_set_top_value (&tc_instance5,(uint32_t)I_1->speaker_period)
-			enable_speaker();
+			//enable_speaker();
 			speaker_enable = true;
 		}
 	}
@@ -367,5 +366,5 @@ void configure_buzzer()
 {
 	configure_buzzer_pins();
 	configure_buzzer_modules();
-	//enable_speaker();	
+	enable_speaker();	
 }

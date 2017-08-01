@@ -219,20 +219,23 @@ void check()
 					case 'g':
 						
 						broadcast = true;
-						break;
-						
+						break;	
 					//Stop broadcast
 					case 's':
+					
 						broadcast = false;
 						break;
 					
 					default :
+					
 						head_ring_buffer = 0;
 						tail_ring_buffer = 0;
 						break;
 					
 				}
 				break;
+			/*
+			
 			case 'O':
 				serial_timeout_count = 0;
 				serial_timeout = false;
@@ -242,8 +245,19 @@ void check()
 					set_led_left_new(received_value[1], received_value[2], received_value[3]);
 					set_led_right_new(received_value[4], received_value[5], received_value[6]);
 				}
-				/*initial_orb = 0; // Get out of color fade mode
-				exit_count = 0;  // Reset time-out counter*/
+				break;
+			
+			*/
+			case 'O':
+				serial_timeout_count = 0;
+				serial_timeout = false;
+				serial_receive_bytes(LEDS_SET_LEN_TEST,received_value);
+				if(serial_timeout == false)
+				{
+					set_led_left_new(received_value[2], received_value[3], received_value[4]);
+					set_led_right_new(received_value[2], received_value[3], received_value[4]);
+				}
+				
 				break;
 				
 			case 'M':
@@ -322,6 +336,7 @@ void check()
 					speaker_update();
 				}
 				break;
+				
 			case 's':
 				serial_timeout_count = 0;
 				serial_timeout = false;
@@ -395,6 +410,7 @@ void check()
 				break;
 				
 			case 'E':
+			
 				transmit_value[0] = BATTERY_TRANSMIT_LENGTH-1;
 				temp_batt_level = adc_start_read_result(BATT_MTR);
 				temp_batt_level = temp_batt_level >> 1;
@@ -434,6 +450,7 @@ void check()
 		if(count_broadcast > MAX_COUNT_BROADCAST)
 		{
 			count_broadcast = 0;
+			port_pin_set_output_level(PIN_PA08, true);
 			//Transmit LDR values
 			transmit_value[0] = SENSORS_TRANSMIT_LENGTH-1; // legacy reasons
 			transmit_value[1] = adc_start_read_result(LEFT_LIGHT);
@@ -477,7 +494,11 @@ void check()
 			temp_batt_status = port_pin_get_output_level(BATT_STATUS);
 			temp_batt_status = temp_batt_status << 7;
 			transmit_value[10] = temp_batt_status | temp_batt_level;
+			//Pin High
+			
 			usart_write_buffer_wait(&usart_ble_instance, transmit_value, SENSORS_TRANSMIT_LENGTH);
+			port_pin_set_output_level(PIN_PA08, false);
+			//Pin Low
 		}
 	 }	 
 }
@@ -536,10 +557,6 @@ int main(void)
 	
 	udc_start();
 	system_interrupt_enable_global();
-	
-	
-	//uint8_t string[] = "Hello Raghu!\r\n";
-	//usart_write_buffer_wait(&usart_ble_instance, string, sizeof(string));
 	
 	// The main loop manages only the power mode
 	// because the USB management is done by interrupt

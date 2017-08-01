@@ -503,10 +503,14 @@ enum status_code usart_write_wait(
 
 	/* Write data to USART module */
 	usart_hw->DATA.reg = tx_data;
-
+	
+	//cpu_irq_disable();
+	//Do something here to disable interrupts
 	while (!(usart_hw->INTFLAG.reg & SERCOM_USART_INTFLAG_TXC)) {
 		/* Wait until data is sent */
 	}
+	//cpu_irq_enable();
+	//Enable the interrupts
 
 	return STATUS_OK;
 }

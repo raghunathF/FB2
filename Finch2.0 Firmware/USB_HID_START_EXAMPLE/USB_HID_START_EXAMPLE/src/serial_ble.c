@@ -23,7 +23,7 @@ void serial_ble_usart_configure()
 {
 	struct usart_config config_usart;
 	usart_get_config_defaults(&config_usart);
-	config_usart.baudrate    = 250000;
+	config_usart.baudrate    = 115200;
 	config_usart.mux_setting = BLE_SERCOM_MUX_SETTING;
 	config_usart.pinmux_pad0 = BLE_SERCOM_PINMUX_PAD0;
 	config_usart.pinmux_pad1 = BLE_SERCOM_PINMUX_PAD1;
