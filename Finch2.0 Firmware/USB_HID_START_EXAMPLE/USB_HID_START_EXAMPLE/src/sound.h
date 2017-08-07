@@ -25,12 +25,15 @@ struct dma_resource resource_DAC;
 COMPILER_ALIGNED(16)
 DmacDescriptor descriptor_DAC;
 
+
+
+
 extern volatile uint8_t buzz_type;
 extern volatile uint16_t buzz_frequency;
 extern volatile uint16_t buzz_volume;
 
 
-
+void turn_off_speaker();
 void setup_prescalar(struct speaker_timer*);
 void configure_dma_buzzer();
 void configure_tc5(struct speaker_timer*);

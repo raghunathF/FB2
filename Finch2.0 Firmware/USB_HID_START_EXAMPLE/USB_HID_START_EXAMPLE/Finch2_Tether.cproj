@@ -877,6 +877,9 @@
     <Compile Include="src\global.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\global_macros.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\led_left_right.c">
       <SubType>compile</SubType>
     </Compile>

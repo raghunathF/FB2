@@ -13,6 +13,7 @@ void configure_tc_callbacks(void);
 void configure_rgb_led(void);
 void set_led_right_new(uint8_t red, uint8_t green, uint8_t blue);
 void set_led_left_new(uint8_t red, uint8_t green, uint8_t blue);
+void switch_off_LEDS();
 
 #define L_RLED_PIN PIN_PA07
 #define L_GLED_PIN PIN_PA06

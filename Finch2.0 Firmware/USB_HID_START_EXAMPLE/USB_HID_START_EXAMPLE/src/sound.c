@@ -15,19 +15,17 @@
 #define AUDIO_SDB PIN_PB23
 
 static volatile  uint8_t waveform_type = sine;
-static volatile uint16_t waveform_volume = 0; //0x3ff highest analog value to be generated
-volatile static uint16_t waveform_frequency = 5000;  //1KHz
+static volatile uint16_t waveform_volume = 0; //100 highest
+volatile static uint16_t waveform_frequency = 262;  //1KHz
 
 
 void configure_dac(void)
 {
-
 	struct dac_config config_dac;
 	dac_get_config_defaults(&config_dac);
 	config_dac.reference = DAC_REFERENCE_AVCC;
 	dac_init(&dac_instance, DAC, &config_dac);
-	//dac_enable(&dac_instance);
-	
+	//dac_enable(&dac_instance);	
 }
 
 void configure_dac_channel(void)
@@ -293,7 +291,13 @@ void speaker_update()
 	
 }
 
-
+void turn_off_speaker()
+{
+	buzz_type		= 0x00; //Square wave -- not important
+	buzz_frequency  = 0x0000; //Zero frequency
+	buzz_volume		= 0; //Zero Volume
+	speaker_update();
+}
 
 //
 void configure_tc5(struct speaker_timer* I_1)

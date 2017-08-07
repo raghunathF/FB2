@@ -70,6 +70,10 @@ static volatile bool main_b_generic_enable = false;
 
 #define MAX_REC_BYTE 20
 
+#define  FW_VERSION_MSB 0x00
+#define  FW_VERSION_LSB 0x01
+#define  HW_VERSION_MSB 0x00
+#define  HW_VERSION_LSB 0x01
 
 #define MAX_TRANSMIT_VALUE 20
 #define ACCL_TRANSMIT_LENGTH 5
@@ -82,11 +86,6 @@ static volatile bool main_b_generic_enable = false;
 #define VERSION_TRANSMIT_LENGTH 5
 #define BATTERY_TRANSMIT_LENGTH 2
 
-#define  FW_VERSION_MSB 0x00
-#define  FW_VERSION_LSB 0x01
-
-#define  HW_VERSION_MSB 0x00
-#define  HW_VERSION_LSB 0x01
 
 #define  MAX_COUNT_BROADCAST 1
 
@@ -144,7 +143,7 @@ void check()
 		tail_ring_buffer++;
 		switch(received_value[0])
 		{
-			//Set all the sensors values
+			//Set all the actuator values
 			case 'u':
 				serial_timeout_count = 0;
 				serial_timeout = false;
@@ -178,6 +177,7 @@ void check()
 					}
 				}
 				break;
+			
 			//Get all the sensors values
 			case 'v':
 				//Transmit LDR values
@@ -203,7 +203,17 @@ void check()
 				//Ultrasound
 				echo_distance = get_ultrasound_distance();
 				transmit_value[9] = *echo_distance++;
-				transmit_value[8] = *echo_distance;				
+				transmit_value[8] = *echo_distance;		
+				
+				//
+				//
+				temp_batt_level = adc_start_read_result(BATT_MTR);
+				temp_batt_level = temp_batt_level >> 1;
+				temp_batt_status = port_pin_get_output_level(BATT_STATUS);
+				temp_batt_status = temp_batt_status << 7;
+				transmit_value[10] = temp_batt_status | temp_batt_level;
+				
+						
 				usart_write_buffer_wait(&usart_ble_instance, transmit_value, SENSORS_TRANSMIT_LENGTH);
 
 				break;
@@ -248,6 +258,7 @@ void check()
 				break;
 			
 			*/
+			//Test LED
 			case 'O':
 				serial_timeout_count = 0;
 				serial_timeout = false;
@@ -274,6 +285,7 @@ void check()
 					set_motor_right(received_value[3], received_value[4]);
 				}
 				break;
+				
 			// Creates an outgoing report with the accelerometer data
 			case 'A':
 				get_accel_data();
@@ -295,6 +307,18 @@ void check()
 				usart_write_buffer_wait(&usart_ble_instance, transmit_value, L_TRANSMIT_LENGTH);
 				break;
 				
+			case 'B':
+				serial_timeout_count = 0;
+				serial_timeout = false;
+				serial_receive_bytes(ULTRASOUND_SET_LEN,received_value);
+				if(serial_timeout == false)
+				{
+					buzz_type =  received_value[1];
+					buzz_frequency =  (received_value[2]<<8) + received_value[3];
+					buzz_volume    =  received_value[4];
+					speaker_update();
+				}
+				break;
 			case 'F':
 				transmit_value[0] = LF_TRANSMIT_LENGTH-1;
 				transmit_value[1] = adc_start_read_result(LINE_FOLLOWER);
@@ -324,18 +348,7 @@ void check()
 				usart_write_buffer_wait(&usart_ble_instance, transmit_value, ULTRA_TRANSMIT_LENGTH);
 				break;
 				
-			case 'B':
-				serial_timeout_count = 0;
-				serial_timeout = false;
-				serial_receive_bytes(ULTRASOUND_SET_LEN,received_value);
-				if(serial_timeout == false)
-				{
-					buzz_type =  received_value[1];
-					buzz_frequency =  (received_value[2]<<8) + received_value[3];
-					buzz_volume    =  received_value[4];
-					speaker_update();
-				}
-				break;
+			
 				
 			case 's':
 				serial_timeout_count = 0;
@@ -346,6 +359,7 @@ void check()
 					switch(received_value[1])
 					{
 						case '1':
+						
 							transmit_value[0] = L_TRANSMIT_LENGTH-1;
 							transmit_value[1] = adc_start_read_result(LEFT_LIGHT);
 							transmit_value[2] = adc_start_read_result(RIGHT_LIGHT);
@@ -367,12 +381,14 @@ void check()
 							break;
 					
 						case '3':
+						
 							transmit_value[0] = LF_TRANSMIT_LENGTH-1;
 							transmit_value[1] = adc_start_read_result(LINE_FOLLOWER);
 							usart_write_buffer_wait(&usart_ble_instance, transmit_value, LF_TRANSMIT_LENGTH);
 							break;
 							
 						case '4':
+						
 							echo_distance = get_ultrasound_distance();
 							transmit_value[0] = ULTRA_TRANSMIT_LENGTH-1;
 							transmit_value[2] = *echo_distance++;
@@ -420,7 +436,12 @@ void check()
 				usart_write_buffer_wait(&usart_ble_instance, transmit_value, BATTERY_TRANSMIT_LENGTH);
 				break;
 				
+			case 'x':
 			
+				turn_off_motors();
+				turn_off_speaker();
+				switch_off_LEDS();
+				break;
 					
 			// Returns an incrementing counter - used to measure cycle time and as a keep-alive.
 			/*

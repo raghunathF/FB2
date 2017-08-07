@@ -55,6 +55,8 @@
 #include "ir.h"
 #include "ultrasound_new.h"
 #include "led_left_right.h"
+#include "global_macros.h"
+#include "battery.h"
 
 static uint8_t ui_hid_report[UDI_HID_REPORT_OUT_SIZE];
 int count = 0;
@@ -125,7 +127,12 @@ void ui_handle_report(uint8_t *report)
 	uint8_t green;
 	uint8_t blue;	
 
-	char* echo_distance;
+	volatile static char* echo_distance;
+	volatile static uint8_t echo_prev[2];
+	volatile static uint8_t echo_current[2];
+	
+	uint8_t temp_batt_level	= 0;
+	uint8_t temp_batt_status = 0;
 	
 	int i;
 	count++;
@@ -135,183 +142,234 @@ void ui_handle_report(uint8_t *report)
 
 	// HID Reports are 8 bytes long. The first byte specifies the function of that report (set motors, get light sensor values, etc).
 	switch(report[0]) {
-		// If O, set the LED using bytes 1-3 of the HID report
-		// ASCII value for O --
-		case 'O':
-			red = report[1];
-			green = report[2];
-			blue = report[3];
-			set_led_left_new(red, green, blue);
-			set_led_right_new(red, green, blue);
-			/*initial_orb = 0; // Get out of color fade mode
-			exit_count = 0;  // Reset time-out counter*/
-			if(red != 0) {
-				//LED_On(LED_0_PIN);
-			}
-			else {
-				//LED_Off(LED_0_PIN);
-			}
+		
+		
+		//Get all the sensors values except for accelerometer
+		case 'v':
 			
-			break;
-		// If 'L', create an outgoing report with the light sensor values
-		case 'L':
-			/*lightSensorVals = read_light_sensors(); // returns both values as a 16-bit int, high-byte is left, low-byte is right
-			leftLightSensor = lightSensorVals>>8;
-			rightLightSensor = lightSensorVals - (leftLightSensor<<8);*/
+			//Transmit LDR values
 			ui_hid_report[0] = adc_start_read_result(LEFT_LIGHT);
 			ui_hid_report[1] = adc_start_read_result(RIGHT_LIGHT);
-		// Get out of idle state and stop LED from color-fading
-		/*if(initial_orb) {
-			initial_orb = 0;
-			set_orb0(0,0,0);
-		}
-		exit_count = 0; */// Reset time-out counter
-		break;
-		// If 'T', create an outgoing report with temperature
-		case 'T':
-			system_voltage_reference_enable(SYSTEM_VOLTAGE_REFERENCE_TEMPSENSE);
-			configure_adc_temp();
-			load_calibration_data();
-			ui_hid_report[0] = calculate_temperature(adc_start_read_result(ADC_POSITIVE_INPUT_TEMP));
-			configure_adc();
-		/*
-		if(initial_orb) {
-			initial_orb = 0;
-			set_orb0(0,0,0);
-		}
-		exit_count = 0;*/
-		break;
+				
+			//Line Follower
+			ui_hid_report[2] = adc_start_read_result(LINE_FOLLOWER);
+				
+			//Ultrasound
+			echo_distance = get_ultrasound_distance();
+			ui_hid_report[3] = *echo_distance++;
+			ui_hid_report[4] = *echo_distance;
+			
+			temp_batt_level = adc_start_read_result(BATT_MTR);
+			temp_batt_level = temp_batt_level >> 1;
+			temp_batt_status = port_pin_get_output_level(BATT_STATUS);
+			temp_batt_status = temp_batt_status << 7;
+			ui_hid_report[5] = temp_batt_status | temp_batt_level;
+				
+			break;
+		   /*
+			
+			case 'O':
+				serial_timeout_count = 0;
+				serial_timeout = false;
+				serial_receive_bytes(LEDS_SET_LEN,received_value);
+				if(serial_timeout == false)
+				{
+					set_led_left_new(received_value[1], received_value[2], received_value[3]);
+					set_led_right_new(received_value[4], received_value[5], received_value[6]);
+				}
+				break;
+			
+			*/
+			//Test LED
+		case 'O':	
+			
+			set_led_left_new(report[1], report[2], report[3]);
+			set_led_right_new(report[1], report[2], report[3]);
+				
+			break;
+				
+		//Set all the actuators except speakers
 		// If 'M', use bytes 1-4 to set motor speed and direction
 		case 'M':
-		/*if(initial_orb) {
-			initial_orb = 0;
-			set_orb0(0,0,0);
-		}*/
-		if(report[2] == 0 && report[4] == 0)
-		{
-			turn_off_motors();
-		}
 		
-		set_motor_left(report[1], report[2]); // directions and speed are inputs
-		set_motor_right(report[3], report[4]);
-		/*exit_count = 0;*/
-		break;
-		// Use bytes 1-4 to set buzzer frequency and duration
-		case 'B':
-		/*buzz_duration = (report[1]<<8) + report[2];
-		buzz_frequency = (report[3]<<8) + report[4];
+			if(report[2] == 0 && report[4] == 0)
+			{
+				turn_off_motors();
+			}
+			set_motor_left(report[1], report[2]); // directions and speed are inputs
+			set_motor_right(report[3], report[4]);
 		
-		if(initial_orb) {
-			initial_orb = 0;
-			set_orb0(0,0,0);
-		}
-		chirp(buzz_duration, buzz_frequency);
-		exit_count = 0;*/
-		buzz_type =  report[1];
-		buzz_frequency =  (report[2]<<8) + report[3];
-		buzz_volume    =  report[4];
-		speaker_update();
-		
-		break;
+			break;
+			
 		// Creates an outgoing report with the accelerometer data
 		case 'A':
-		get_accel_data();
-		// Checks if the value was read at the same time the register was being updated (invalid result), and if so, repeats the request for data
-		while((bufferReceive[0] & 0b01000000) | (bufferReceive[1] & 0b01000000) | (bufferReceive[2] & 0b01000000) | (bufferReceive[3] & 0b01000000)) {
-			get_accel_data();
-		}
-		ui_hid_report[0] = 153; // legacy reasons 
-		for(i = 1; i < 5; i++) {
-			ui_hid_report[i] = bufferReceive[i-1];
-		}
-		//ui_hid_report[5] = 0;//errorCode; // Returns the error code for debugging purposes.
-		/*if(initial_orb) {
-			initial_orb = 0;
-			set_orb0(0,0,0);
-		}
-		exit_count = 0;*/
-		break;
-		// Returns the left and right IR values
-		case 'I':
-		ui_hid_report[0] = read_left_ir();
-		ui_hid_report[1] = read_right_ir();
 		
-		/*
-		if(initial_orb) {
-			initial_orb = 0;
-			set_orb0(0,0,0);
-		}
-		exit_count = 0;*/
-		break;
-		// Fast way to turn everything off
-		case 'X':
-		/*
-		turn_off_motors();
-		turn_off_buzz();
-		initial_orb = 0;
-		set_orb0(0,0,0);
-		exit_count = 0;*/
-		break;
-		// Fast way to turn everything off AND go to idle state
-		case 'R':/*
-		turn_off_motors();
-		turn_off_buzz();
-		initial_orb = 1;
-		red = 0;
-		green = 0;
-		blue = 254;
-		redUp = 1;
-		greenUp = 0;
-		blueUp = 0;
-		exit_count = 0;*/
-		break;
+			get_accel_data();
+			// Checks if the value was read at the same time the register was being updated (invalid result), and if so, repeats the request for data
+			while((bufferReceive[0] & 0b01000000) | (bufferReceive[1] & 0b01000000) | (bufferReceive[2] & 0b01000000) | (bufferReceive[3] & 0b01000000)) {
+				get_accel_data();
+			}
+			ui_hid_report[0] = 153; // legacy reasons
+			for(i = 1; i < 5; i++) {
+				ui_hid_report[i] = bufferReceive[i-1];
+			}
+			break;
+
+		
+		// If 'L', create an outgoing report with the light sensor values
+		case 'L':
+		
+			ui_hid_report[0] = adc_start_read_result(LEFT_LIGHT);
+			ui_hid_report[1] = adc_start_read_result(RIGHT_LIGHT);
+			break;
+	
+		
+		// Use bytes 1-4 to set buzzer frequency and duration
+		case 'B':
+
+			buzz_type =  report[1];
+			buzz_frequency =  (report[2]<<8) + report[3];
+			buzz_volume    =  report[4];
+			speaker_update();
+			break;
+		
 		//Line Follower
 		case 'F':
-		ui_hid_report[0] = adc_start_read_result(LINE_FOLLOWER);
-		break;
+			ui_hid_report[0] = adc_start_read_result(LINE_FOLLOWER);
+			break;
 		
 		//Ultrasound sensor --ascii value 55
 		case 'U':
-		echo_distance = get_ultrasound_distance();
-		ui_hid_report[0] = *echo_distance++;
-		ui_hid_report[1] = *echo_distance;
-		break;
 		
+			echo_distance = get_ultrasound_distance();
+			echo_current[0]	= *echo_distance++;
+			echo_current[1]	= *echo_distance;
+			if((resource_distance_lock == 1) || (echo_current[1] > 0x75))
+			{
+				
+				ui_hid_report[1] = echo_prev[0];
+				ui_hid_report[0] = echo_prev[1];
+			}
+			else
+			{
+				
+				ui_hid_report[0] = echo_current[0];
+				ui_hid_report[1] = echo_current[1];
+				echo_prev[0]	  = echo_current[0];
+				echo_prev[1]	  = echo_current[1];
+				
+			}
+			echo_distance = get_ultrasound_distance();
+			ui_hid_report[0] = *echo_distance++;
+			ui_hid_report[1] = *echo_distance;
+			break;
+		
+		//Fast way to turn everything off
+		//Yet to be done
+		case 'E':
+		
+			temp_batt_level = adc_start_read_result(BATT_MTR);
+			temp_batt_level = temp_batt_level >> 1;
+			temp_batt_status = port_pin_get_output_level(BATT_STATUS);
+			temp_batt_status = temp_batt_status << 7;
+			ui_hid_report[0] = temp_batt_status | temp_batt_level;
+			break;
+
+		case 's' :
+			switch(report[1])
+			{
+				case '1':
+					
+					ui_hid_report[0] = adc_start_read_result(LEFT_LIGHT);
+					ui_hid_report[1] = adc_start_read_result(RIGHT_LIGHT);
+					break;
+				
+				case '2':
+				
+					get_accel_data();
+					// Checks if the value was read at the same time the register was being updated (invalid result), and if so, repeats the request for data
+					while((bufferReceive[0] & 0b01000000) | (bufferReceive[1] & 0b01000000) | (bufferReceive[2] & 0b01000000) | (bufferReceive[3] & 0b01000000)) {
+						get_accel_data();
+					}
+					ui_hid_report[0] = 153; // legacy reasons
+					for(i = 1; i < 5; i++) {
+						ui_hid_report[i] = bufferReceive[i-1];
+					}
+					break;
+				
+				case '3':
+				
+					ui_hid_report[0] = adc_start_read_result(LINE_FOLLOWER);
+					break;
+				
+				case '4':
+				
+					echo_distance = get_ultrasound_distance();
+					echo_current[0]	= *echo_distance++;
+					echo_current[1]	= *echo_distance;
+					if((resource_distance_lock == 1) || (echo_current[1] > 0x75))
+					{
+						
+						ui_hid_report[1] = echo_prev[0];
+						ui_hid_report[0] = echo_prev[1];
+					}
+					else
+					{
+						
+						ui_hid_report[0] = echo_current[0];
+						ui_hid_report[1] = echo_current[1];
+						echo_prev[0]	  = echo_current[0];
+						echo_prev[1]	  = echo_current[1];
+						
+					}
+					echo_distance = get_ultrasound_distance();
+					ui_hid_report[0] = *echo_distance++;
+					ui_hid_report[1] = *echo_distance;
+					break;
+					
+				case '6':
+				
+					ui_hid_report[0] = FW_VERSION_MSB;
+					ui_hid_report[1] = FW_VERSION_LSB;
+					ui_hid_report[2] = HW_VERSION_MSB;
+					ui_hid_report[3] = HW_VERSION_LSB;
+					break;
+					
+				default:
+					break;
+			}
+		
+		
+		case 'X':
+			/*
+			turn_off_motors();
+			turn_off_buzz();
+			initial_orb = 0;
+			set_orb0(0,0,0);
+			exit_count = 0;*/
+			turn_off_motors();
+			turn_off_speaker();
+			switch_off_LEDS();
+			break;
+
 		
 		// Returns an incrementing counter - used to measure cycle time and as a keep-alive.
 		case 'z':
-		ui_hid_report[0] = count;
-		count++;
-		if(count > 255) {
-			count = 0;
-		}
-		//exit_count = 0;
-		break;
+			ui_hid_report[0] = count;
+			count++;
+			if(count > 255) {
+				count = 0;
+			}
+			break;
+			
 		default:
-		break;
+			break;
 	}
+	
 	report[0] = 0x00;
 	// Sets last byte of outgoing report to last byte of incoming report so an outgoing report can be matched to its incoming request
 	ui_hid_report[7]= report[7];
 	udi_hid_generic_send_report_in(ui_hid_report);
-	
-	/*
-	if (report[0]=='1') {
-		// A led must be on
-		switch(report[1]) {
-			case '1':
-			ui_b_led_blink = false;
-			LED_On(LED_0_PIN);
-			break;
-		}
-	} else {
-		// A led can blink
-		switch(report[1]) {
-			case '1':
-			ui_b_led_blink = true;
-			break;
-		}
-	}*/
 }
 
 /**

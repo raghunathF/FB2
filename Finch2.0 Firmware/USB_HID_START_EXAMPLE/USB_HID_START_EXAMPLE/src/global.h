@@ -8,6 +8,7 @@
 
 #define MAX_LIMIT_RING_BUFFER 255
 
+
 volatile uint8_t buzz_type=0;
 volatile uint16_t buzz_frequency=0;
 volatile uint16_t buzz_volume=0;

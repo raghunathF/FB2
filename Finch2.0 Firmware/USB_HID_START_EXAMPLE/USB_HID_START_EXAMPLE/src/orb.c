@@ -311,9 +311,10 @@ void turn_off_motors()
 	// disable the chip to save power - this is no longer an option as we needed the sleep mode i/o pin for something else
 	// port_pin_set_output_level(PIN_PA27, false); 
 	// Turn PWM to 0, no need to turn everything off
-	set_motor_left(1,0);
-	set_motor_right(1,0);
+	set_motor_left(0,0);
+	set_motor_right(0,0);
 	
 	// Set flag to false
 	motor_enable = false;
 }
+

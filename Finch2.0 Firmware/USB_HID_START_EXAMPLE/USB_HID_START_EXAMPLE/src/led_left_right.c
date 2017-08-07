@@ -13,6 +13,8 @@
 #define RGB_LED_DISABLE 0
 #define MAX_INTENSITY 255
 
+#define VALUE_LED_OFF 0 
+
 static uint8_t N_valid_compares = 6;
 
 uint8_t time_array[6]; 
@@ -282,6 +284,13 @@ void configure_tc_callbacks(void)
 	TC_CALLBACK_CC_CHANNEL0);
 	tc_enable_callback(&tc_instance, TC_CALLBACK_OVERFLOW);
 	tc_enable_callback(&tc_instance, TC_CALLBACK_CC_CHANNEL0);
+	
+}
+
+void switch_off_LEDS()
+{
+	set_led_left_new(VALUE_LED_OFF,VALUE_LED_OFF,VALUE_LED_OFF);
+	set_led_right_new(VALUE_LED_OFF,VALUE_LED_OFF,VALUE_LED_OFF);
 	
 }
 

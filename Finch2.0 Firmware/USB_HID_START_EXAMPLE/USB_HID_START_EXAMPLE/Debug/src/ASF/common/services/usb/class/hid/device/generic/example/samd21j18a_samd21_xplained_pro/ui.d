@@ -176,7 +176,7 @@ src/ASF/common/services/usb/class/hid/device/generic/example/samd21j18a_samd21_x
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-none-eabi\include\machine\fastmath.h \
  ../src/finch_adc.h ../src/orb.h ../src/sound.h ../src/motors.h \
  ../src/accel.h ../src/ir.h ../src/ultrasound_new.h \
- ../src/led_left_right.h
+ ../src/led_left_right.h ../src/global_macros.h ../src/battery.h
 
 ../src/asf.h:
 
@@ -555,3 +555,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\arm\arm-gnu-toolchain\arm-no
 ../src/ultrasound_new.h:
 
 ../src/led_left_right.h:
+
+../src/global_macros.h:
+
+../src/battery.h:

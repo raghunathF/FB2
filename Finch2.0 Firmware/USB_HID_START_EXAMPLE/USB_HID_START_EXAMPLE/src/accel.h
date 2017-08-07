@@ -25,5 +25,4 @@ void write_data(uint8_t *bufferSend, uint8_t length);
 
 
 
-
 #endif /* ACCEL_H_ */
